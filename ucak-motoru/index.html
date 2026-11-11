@@ -71,14 +71,15 @@ button.primary { background: var(--accent); color: var(--accent-fg); border-colo
 .cut { padding: 10px 10px 6px }
 canvas { display: block; width: 100%; max-width: 100% }
 .view { position: relative; padding: 0; overflow: hidden; background: #0b0f14 }
-#v3d { aspect-ratio: 2.05 / 1; width: 100% }
+#v3d { aspect-ratio: 1.75 / 1; width: 100% }
 #v3d canvas { width: 100%; height: 100% }
-@media (max-width: 560px) { #v3d { aspect-ratio: 1.25 / 1 } }
+@media (max-width: 560px) { #v3d { aspect-ratio: 1 / 1 } .view .vb { position: static; max-width: none; padding: 8px; justify-content: flex-start } .view .hud { top: auto; bottom: 26px } }
 /* 3B görünüm her iki temada da koyu bir test hücresidir; üstündeki yazılar sabit açık renk kullanır */
 .view .hud { position: absolute; left: 12px; top: 10px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; color: #e6ecf2 }
 .view .hud b { font: 600 20px var(--display); letter-spacing: .08em; color: #ffa63d }
 .view .hud span { font: 12px var(--mono); color: #93a2b2 }
-.view .vb { position: absolute; right: 10px; top: 10px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 60% }
+.view .vb { position: absolute; right: 10px; top: 10px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 62%; z-index: 2 }
+.view .hud, .view .hint { z-index: 2 }
 .view .vb button { background: rgba(22,30,39,.82); color: #e6ecf2; border-color: #2b3745; min-height: 30px; padding: 4px 9px; font-size: 12px }
 .view .vb button[aria-pressed="true"] { border-color: #ffa63d; color: #ffa63d }
 .view .hint { position: absolute; right: 12px; bottom: 8px; font: 11px var(--mono); color: #93a2b2; pointer-events: none }
@@ -180,8 +181,10 @@ section { display: flex; flex-direction: column; gap: 12px }
         <div id="v3d" role="img" aria-label="Motorun üç boyutlu görünümü; fan ve makaralar anlık devirle döner, sıcak bölüm sıcaklığa göre akkorlaşır"></div>
         <div class="hud"><b id="phase"></b><span id="stB"></span></div>
         <div class="vb">
-          <button id="bCut" aria-pressed="true">Kesit</button>
-          <button data-v="kesit">Çapraz</button><button data-v="on">Ön</button><button data-v="yan">Yan</button><button data-v="arka">Arka</button>
+          <button data-m="0" aria-pressed="false">Uçuş hali</button><button data-m="1" aria-pressed="false">Kaportalar açık</button><button data-m="2" aria-pressed="true">Kesit</button>
+          <button id="bLab" aria-pressed="true">Etiketler</button>
+          <button data-v="kesit">Çapraz</button><button data-v="on">Ön</button><button data-v="yan">Yan</button><button data-v="arka">Arka</button><button data-v="alt">Alt</button>
+          <button id="zIn" aria-label="Yakınlaş">+</button><button id="zOut" aria-label="Uzaklaş">−</button>
         </div>
         <div class="hint">Döndürmek için sürükleyin</div>
       </div>
@@ -241,6 +244,7 @@ section { display: flex; flex-direction: column; gap: 12px }
         <ul>
           <li>Ölçülmüş kompresör ve türbin haritaları yoktur. İş katsayısı sabit, verim düzeltilmiş hıza göre basit bir eğriyle değişir; pompaj hattı jenerik bir eğridir, bu motorun gerçek sınırı değildir.</li>
           <li>Rölanti altı (çalıştırma, durdurma) davranışı çevrim çözümü değil, tipik sürelere ayarlanmış yarı ampirik bir modeldir.</li>
+          <li>3B modeldeki dış donanım (borular, kablo demetleri, aksesuarlar) bu sınıf motorların tipik yerleşimine göre çizilmiş bir gösterimdir; mühendislik çizimi ya da CAD verisi değildir.</li>
           <li>3B görünümde dönüş hızı görsel olarak ölçeklenir; gerçek devirde kanatlar ekranda seçilemez. Ses, devir ve itkiden sentezlenir, kayıt değildir.</li>
           <li>Kanat aerodinamiği (CFD), yapısal ve ısıl analiz, titreşim, malzeme ömrü, gürültü ve emisyon hesabı kapsam dışıdır.</li>
           <li>Sonuçlar deney verisiyle değil, bu motor sınıfının yayımlanmış tipik değer aralıklarıyla karşılaştırılmıştır.</li>
@@ -393,7 +397,13 @@ section { display: flex; flex-direction: column; gap: 12px }
   var view = null;
   try { if (window.THREE && window.Engine3D) view = Engine3D($('v3d'), g); } catch (e) { view = null; }
   if (!view) $('v3d').innerHTML = '<div class="nogl">3B görünüm bu cihazda açılamadı (WebGL gerekli). Göstergeler ve grafikler çalışmaya devam eder.</div>';
-  $('bCut').onclick = function () { if (!view) return; view.setCut(!view.isCut()); this.setAttribute('aria-pressed', view.isCut()); };
+  var mBtns = document.querySelectorAll('button[data-m]');
+  Array.prototype.forEach.call(mBtns, function (b) { b.onclick = function () {
+    if (!view) return; view.setMode(+b.getAttribute('data-m'));
+    Array.prototype.forEach.call(mBtns, function (x) { x.setAttribute('aria-pressed', x === b); });
+  }; });
+  $('bLab').onclick = function () { var on = this.getAttribute('aria-pressed') !== 'true'; this.setAttribute('aria-pressed', on); if (view) view.setLabels(on); };
+  $('zIn').onclick = function () { if (view) view.zoom(0.8); }; $('zOut').onclick = function () { if (view) view.zoom(1.25); };
   Array.prototype.forEach.call(document.querySelectorAll('button[data-v]'), function (b) { b.onclick = function () { if (view) view.setView(b.getAttribute('data-v')); }; });
 
   // ---- motor sesi (devir, itki ve yanmadan sentezlenir)
