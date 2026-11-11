@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--PAGE-->
+<title>MB-120 Toros</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Yerleşim: test hücresi kontrol odası — solda kumanda, ortada kesit ve göstergeler, altta kayıt şeritleri ve tasarım föyü */
+:root {
+  --bg: #eef1f4; --panel: #ffffff; --inset: #e4e9ee; --line: #c9d2db;
+  --fg: #16212c; --muted: #566676; --accent: #b25a00; --accent-fg: #ffffff;
+  --ok: #1d7a4c; --warn: #b3261e;
+  --s1: #0b63a8; --s2: #b25a00; --s3: #1d7a4c; --s4: #9a2f6b;
+  --metal: #8a97a5; --metal-2: #5d6b79;
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e141a; --panel: #161e27; --inset: #0f161d; --line: #2b3745;
+  --fg: #e6ecf2; --muted: #93a2b2; --accent: #ffa63d; --accent-fg: #1a1205;
+  --ok: #58c78d; --warn: #ff7a70;
+  --s1: #5db2f0; --s2: #ffa63d; --s3: #58c78d; --s4: #e58ac0;
+  --metal: #6c7a89; --metal-2: #9aa8b6; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e141a; --panel: #161e27; --inset: #0f161d; --line: #2b3745;
+  --fg: #e6ecf2; --muted: #93a2b2; --accent: #ffa63d; --accent-fg: #1a1205;
+  --ok: #58c78d; --warn: #ff7a70;
+  --s1: #5db2f0; --s2: #ffa63d; --s3: #58c78d; --s4: #e58ac0;
+  --metal: #6c7a89; --metal-2: #9aa8b6; color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); margin: 0 }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 22px }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: .01em }
+h1 { font-size: 46px; line-height: 1; font-weight: 700; text-transform: uppercase }
+h2 { font-size: 26px; text-transform: uppercase }
+h3 { font-size: 17px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted) }
+p { margin: 0; max-width: 68ch }
+.muted { color: var(--muted) }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums }
+
+header.top { display: flex; flex-wrap: wrap; gap: 14px 32px; align-items: flex-end; justify-content: space-between;
+  border-bottom: 2px solid var(--fg); padding-bottom: 14px }
+header.top .id { display: flex; flex-direction: column; gap: 6px; min-width: 0 }
+header.top .eyebrow { font: 500 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent) }
+.specs { display: flex; flex-wrap: wrap; gap: 6px 22px; font: 13px var(--mono) }
+.specs b { font-weight: 500; color: var(--muted); margin-right: 6px }
+
+.bench { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 16px; align-items: start }
+@media (max-width: 880px) { .bench { grid-template-columns: minmax(0, 1fr) } h1 { font-size: 36px } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 16px; min-width: 0 }
+.ctl { display: flex; flex-direction: column; gap: 16px }
+.field { display: flex; flex-direction: column; gap: 4px }
+.field label { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--muted) }
+.field output { font: 500 15px var(--mono); color: var(--fg) }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 0; height: 24px }
+input[type=range]:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.field.lever label { color: var(--fg); font-weight: 600 }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px }
+button { font: 500 13px var(--body); color: var(--fg); background: var(--inset); border: 1px solid var(--line);
+  border-radius: 3px; padding: 8px 8px; cursor: pointer; min-height: 36px }
+button:hover { border-color: var(--accent) }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600 }
+.stage { display: flex; flex-direction: column; gap: 14px; min-width: 0 }
+.cut { padding: 10px 10px 6px }
+canvas { display: block; width: 100%; max-width: 100% }
+#cut { aspect-ratio: 2.35 / 1 }
+@media (max-width: 560px) { #cut { aspect-ratio: 1.55 / 1 } }
+#tDes td, #tSt td:first-child, #tPerf td:first-child { white-space: normal }
+.status { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between; font: 12px var(--mono); color: var(--muted); padding: 4px 6px 0 }
+.chip { color: var(--accent) }
+
+.gauges { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden }
+@media (max-width: 880px) { .gauges { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
+@media (max-width: 420px) { .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+.g { background: var(--panel); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0 }
+.g .k { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted) }
+.g .v { font: 500 24px/1.1 var(--mono); font-variant-numeric: tabular-nums }
+.g .u { font-size: 12px; color: var(--muted) }
+.g .bar { height: 4px; background: var(--inset); margin-top: 6px; position: relative }
+.g .bar i { position: absolute; inset: 0 auto 0 0; background: var(--s1); width: 0 }
+.g.hot .bar i { background: var(--warn) } .g.hot .v { color: var(--warn) }
+
+.charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px }
+@media (max-width: 980px) { .charts { grid-template-columns: minmax(0, 1fr) } }
+.chart { display: flex; flex-direction: column; gap: 8px }
+.chart canvas { aspect-ratio: 1.45 / 1 }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--muted) }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px }
+
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px }
+@media (max-width: 880px) { .cols { grid-template-columns: minmax(0, 1fr) } }
+.tw { overflow-x: auto }
+table { border-collapse: collapse; width: 100%; font-size: 13px }
+th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap }
+th:first-child, td:first-child { text-align: left }
+thead th { font: 500 11px var(--body); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--fg) }
+td { font-family: var(--mono); font-variant-numeric: tabular-nums }
+td:first-child { font-family: var(--body) }
+section { display: flex; flex-direction: column; gap: 12px }
+.notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px }
+@media (max-width: 880px) { .notes { grid-template-columns: minmax(0, 1fr) } }
+.notes ul { margin: 6px 0 0; padding-left: 18px; max-width: 62ch } .notes li { margin-bottom: 4px }
+</style>
+<!--/PAGE-->
+</head>
+<body>
+<!--PAGE-->
+<div class="wrap">
+  <header class="top">
+    <div class="id">
+      <span class="eyebrow">Ön tasarım föyü · sanal test hücresi</span>
+      <h1>MB-120 Toros</h1>
+      <p class="muted">İki makaralı, ayrık akışlı, yüksek baypas oranlı turbofan. Dar gövdeli yolcu uçağı sınıfı.</p>
+    </div>
+    <div class="specs num" id="specs"></div>
+  </header>
+
+  <div class="bench">
+    <div class="panel ctl">
+      <h3>Kumanda</h3>
+      <div class="field lever">
+        <label for="pla">Gaz kolu <output id="plaO"></output></label>
+        <input type="range" id="pla" min="0" max="100" step="1" value="100">
+      </div>
+      <div class="btns">
+        <button id="slamUp" class="primary">Ani tam gaz</button>
+        <button id="slamDn">Ani rölanti</button>
+      </div>
+      <div class="field">
+        <label for="alt">İrtifa <output id="altO"></output></label>
+        <input type="range" id="alt" min="0" max="12500" step="100" value="0">
+      </div>
+      <div class="field">
+        <label for="mach">Mach sayısı <output id="machO"></output></label>
+        <input type="range" id="mach" min="0" max="0.85" step="0.01" value="0">
+      </div>
+      <div class="field">
+        <label for="dt">ISA sapması <output id="dtO"></output></label>
+        <input type="range" id="dt" min="-20" max="30" step="1" value="0">
+      </div>
+      <h3>Hazır koşullar</h3>
+      <div class="btns">
+        <button data-p="0,0,0,100">Kalkış</button>
+        <button data-p="0,0,15,100">Sıcak gün kalkışı</button>
+        <button data-p="10668,0.78,0,100">Tırmanış sonu</button>
+        <button data-p="10668,0.78,0,78">Seyir</button>
+        <button data-p="0,0,0,0">Yer rölantisi</button>
+        <button id="pause">Duraklat</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="panel cut">
+        <canvas id="cut" role="img" aria-label="Motorun boyuna kesiti; bileşenler anlık gaz sıcaklığına göre renklendirilir"></canvas>
+        <div class="status"><span id="stA"></span><span class="chip" id="stB"></span></div>
+      </div>
+      <div class="gauges" id="gauges"></div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <div class="panel chart">
+      <h3>Geçici rejim kaydı · son 30 s</h3>
+      <canvas id="cTime"></canvas>
+      <div class="legend"><span><i style="background:var(--s1)"></i>N1 %</span><span><i style="background:var(--s3)"></i>N2 %</span><span><i style="background:var(--s2)"></i>İtki (azaminin %'si)</span><span><i style="background:var(--s4)"></i>T4 (sınırın %'si)</span></div>
+    </div>
+    <div class="panel chart">
+      <h3>HPC çalışma hattı</h3>
+      <canvas id="cMap"></canvas>
+      <div class="legend"><span><i style="background:var(--muted)"></i>Sürekli rejim hattı</span><span><i style="background:var(--s2)"></i>Anlık yörünge (son 12 s)</span></div>
+    </div>
+    <div class="panel chart">
+      <h3>T–s diyagramı · çekirdek akımı</h3>
+      <canvas id="cTs"></canvas>
+      <div class="legend"><span>İstasyon numaraları ARP 755 düzenindedir</span></div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <section class="panel">
+      <h3>İstasyon verileri · anlık</h3>
+      <div class="tw"><table id="tSt"><thead><tr><th>İstasyon</th><th>T<sub>t</sub> K</th><th>P<sub>t</sub> kPa</th><th>Debi kg/s</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel">
+      <h3>Anma noktaları · sürekli rejim</h3>
+      <div class="tw"><table id="tPerf"><thead><tr><th>Koşul</th><th>İtki kN</th><th>TSFC mg/N·s</th><th>T4 K</th><th>OPR</th><th>BPR</th><th>N1 %</th><th>N2 %</th></tr></thead><tbody></tbody></table></div>
+      <h3 style="margin-top:8px">Tasarım noktası ve boyutlar</h3>
+      <div class="tw"><table id="tDes"><tbody></tbody></table></div>
+    </section>
+  </div>
+
+  <section>
+    <h2>Yöntem ve sınırlar</h2>
+    <div class="notes">
+      <div>
+        <h3>Modelin yaptıkları</h3>
+        <ul>
+          <li>Sıcaklığa ve bileşime bağlı gaz özellikleri (hava ve kerosen yanma ürünleri), ISA atmosfer.</li>
+          <li>Tasarım noktası çevrimi: politropik verimler, kanal ve yanma odası basınç kayıpları, türbin soğutma havası, sızdırma ve güç çekişi.</li>
+          <li>Tasarım dışı eşleşme: boğulmuş türbin kılavuz kanatları (sabit kapasite), sabit alanlı yakınsak lüleler, iki makarada güç dengesi.</li>
+          <li>Geçici rejim: makara atalet dinamiği, N1 kapalı çevrim yakıt denetimi, Wf/P3 hızlanma ve yavaşlama çizelgeleri, T4 ve N2 sınırlayıcıları.</li>
+          <li>Kütle ve enerji korunumu ile 48 uçuş koşulunda yakınsama otomatik testlerle doğrulanır.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Modelin yapmadıkları</h3>
+        <ul>
+          <li>Kompresör ve türbin haritaları yoktur. İş katsayısı sabit, verim düzeltilmiş hıza göre basit bir eğriyle değişir; bu yüzden pompaj (surge) payı hesaplanmaz.</li>
+          <li>Kanat aerodinamiği (CFD), yapısal ve ısıl analiz, titreşim, malzeme ömrü, gürültü ve emisyon hesabı kapsam dışıdır.</li>
+          <li>Sonuçlar deney verisiyle değil, bu motor sınıfının yayımlanmış tipik değer aralıklarıyla karşılaştırılmıştır.</li>
+          <li>Bu bir ön tasarım (kavramsal) çalışmasıdır. Üretilebilir ve sertifikalandırılabilir bir motor için gereken ayrıntı tasarım, test ve belgelendirme adımlarını içermez.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="model.js"></script>
+<script>
+(function () {
+  'use strict';
+  var M = EngineModel, d = M.design(), s = d.spec, g = d.geom;
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (v, n) { return v.toLocaleString('tr-TR', { minimumFractionDigits: n || 0, maximumFractionDigits: n || 0 }); };
+  var css = {};
+  function readCss() {
+    var cs = getComputedStyle(document.documentElement);
+    ['bg', 'panel', 'inset', 'line', 'fg', 'muted', 'accent', 's1', 's2', 's3', 's4', 'metal', 'metal-2'].forEach(function (k) { css[k] = cs.getPropertyValue('--' + k).trim(); });
+  }
+  readCss(); setInterval(readCss, 1500);
+
+  // ---- başlık özellikleri
+  var slsR = M.ratings(d, { alt: 0, mach: 0, dTisa: 0 });
+  $('specs').innerHTML = [
+    ['Kalkış itkisi', fmt(slsR.max.Fn / 1e3, 1) + ' kN'], ['Baypas oranı', fmt(s.BPR, 1)],
+    ['Toplam basınç oranı', fmt(s.FPR ? M.flow(d, 1, 1, { alt: s.alt, mach: s.mach, dTisa: 0 }, { T4: s.T4 }).OPR : 0, 1)],
+    ['Fan çapı', fmt(g.fan.Dt, 2) + ' m'], ['Düzen', '1+' + g.nBoost + ' / ' + g.nHpc + ' / ' + g.nHpt + ' / ' + g.nLpt]
+  ].map(function (x) { return '<span><b>' + x[0] + '</b>' + x[1] + '</span>'; }).join('');
+
+  // ---- durum
+  var fc = { alt: 0, mach: 0, dTisa: 0 };
+  var sim = new M.Sim(d, fc, slsR.idle), pla = 1, paused = false;
+  var hist = [], trail = [], opLine = [];
+  function buildOpLine() {
+    opLine = [];
+    var a = sim.rt.idle.T4, b = sim.rt.max.T4, o = sim.rt.idle, i;
+    for (i = 0; i <= 10; i++) { o = M.steadyT4(d, fc, a + (b - a) * i / 10, o); opLine.push([o.wcHpc, o.HPR]); }
+  }
+  buildOpLine();
+
+  function syncLabels() {
+    $('plaO').textContent = '%' + $('pla').value;
+    $('altO').textContent = fmt(+$('alt').value) + ' m';
+    $('machO').textContent = fmt(+$('mach').value, 2);
+    var t = +$('dt').value; $('dtO').textContent = (t > 0 ? '+' : '') + t + ' K';
+  }
+  function applyFlight() {
+    fc = { alt: +$('alt').value, mach: +$('mach').value, dTisa: +$('dt').value };
+    sim.setFlight(fc); buildOpLine(); trail = [];
+  }
+  $('pla').addEventListener('input', function () { pla = this.value / 100; syncLabels(); });
+  ['alt', 'mach', 'dt'].forEach(function (id) { $(id).addEventListener('input', function () { syncLabels(); applyFlight(); }); });
+  $('slamUp').onclick = function () { $('pla').value = 100; pla = 1; syncLabels(); };
+  $('slamDn').onclick = function () { $('pla').value = 0; pla = 0; syncLabels(); };
+  $('pause').onclick = function () { paused = !paused; this.textContent = paused ? 'Sürdür' : 'Duraklat'; };
+  Array.prototype.forEach.call(document.querySelectorAll('button[data-p]'), function (b) {
+    b.onclick = function () {
+      var p = b.getAttribute('data-p').split(',').map(Number);
+      $('alt').value = p[0]; $('mach').value = p[1]; $('dt').value = p[2]; $('pla').value = p[3]; pla = p[3] / 100;
+      syncLabels(); applyFlight();
+      var o = M.steadyTarget(d, fc, 'NL', sim.n1Demand(pla), 1500, sim.rt.max);   // koşula doğrudan otur
+      sim.NL = o.NL; sim.NH = o.NH; sim.Wf = o.Wf; sim.integ = o.Wf; sim.out = o;
+    };
+  });
+  syncLabels();
+
+  // ---- göstergeler
+  var G = [
+    ['n1', 'N1', '%'], ['n2', 'N2', '%'], ['egt', 'EGT (T45)', '°C'],
+    ['ff', 'Yakıt debisi', 'kg/sa'], ['fn', 'Net itki', 'kN'], ['sfc', 'TSFC', 'mg/N·s']
+  ];
+  $('gauges').innerHTML = G.map(function (x) {
+    return '<div class="g" id="g_' + x[0] + '"><span class="k">' + x[1] + '</span><span class="v">–</span><span class="u">' + x[2] + '</span><div class="bar"><i></i></div></div>';
+  }).join('');
+  function setG(id, txt, frac, hot) {
+    var el = $('g_' + id); el.children[1].textContent = txt;
+    el.querySelector('i').style.width = Math.max(0, Math.min(1, frac)) * 100 + '%';
+    el.classList.toggle('hot', !!hot);
+  }
+
+  // ---- tablolar
+  function perfRow(name, o) {
+    return '<tr><td>' + name + '</td><td>' + fmt(o.Fn / 1e3, 1) + '</td><td>' + fmt(o.tsfc * 1e6, 2) + '</td><td>' + fmt(o.T4) + '</td><td>' + fmt(o.OPR, 1) +
+      '</td><td>' + fmt(o.BPR, 1) + '</td><td>' + fmt(o.NL * 100, 1) + '</td><td>' + fmt(o.NH * 100, 1) + '</td></tr>';
+  }
+  (function () {
+    var toc = { alt: 10668, mach: 0.78, dTisa: 0 }, rT = M.ratings(d, toc), hot = M.ratings(d, { alt: 0, mach: 0, dTisa: 15 });
+    var cr = M.steadyTarget(d, toc, 'Fn', 0.8 * rT.max.Fn, 1600, rT.max);
+    $('tPerf').tBodies[0].innerHTML = perfRow('Kalkış, deniz seviyesi, ISA', slsR.max) + perfRow('Kalkış, ISA+15', hot.max) +
+      perfRow('Tırmanış sonu, 10 668 m, M 0,78', rT.max) + perfRow('Seyir, 10 668 m, M 0,78', cr) + perfRow('Yer rölantisi', slsR.idle);
+    var rows = [
+      ['Tasarım noktası', '10 668 m · M 0,78 · ISA'], ['Hava debisi (tasarım)', fmt(d.W2, 1) + ' kg/s'],
+      ['Fan / LPC / HPC basınç oranı', fmt(s.FPR, 2) + ' / ' + fmt(s.LPR, 2) + ' / ' + fmt(s.HPR, 1)],
+      ['T4 tasarım / sınır', s.T4 + ' / ' + s.T4max + ' K'],
+      ['İzentropik verim: fan / HPC / HPT / LPT', [d.etaFan, d.etaHpc, d.etaHpt, d.etaLpt].map(function (x) { return fmt(x, 3); }).join(' / ')],
+      ['Türbin soğutma + sızdırma havası', '%' + fmt((s.bNgv + s.bRot + s.bBleed) * 100) + ' (çekirdek debisinin)'],
+      ['Fan uç çapı / göbek çapı', fmt(g.fan.Dt, 3) + ' / ' + fmt(g.fan.Dh, 3) + ' m'],
+      ['HPC giriş uç çapı', fmt(g.hpc.Dt, 3) + ' m'],
+      ['%100 N1 / %100 N2', fmt(g.rpmL) + ' / ' + fmt(g.rpmH) + ' d/dk'],
+      ['Lüle alanı: baypas / çekirdek', fmt(g.A18, 3) + ' / ' + fmt(g.A8, 3) + ' m²'],
+      ['Kademe: fan+booster / HPC / HPT / LPT', '1+' + g.nBoost + ' / ' + g.nHpc + ' / ' + g.nHpt + ' / ' + g.nLpt],
+      ['Makara ataleti: LP / HP', s.iL + ' / ' + s.iH + ' kg·m²']
+    ];
+    $('tDes').tBodies[0].innerHTML = rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('');
+  })();
+  function stTable(o) {
+    $('tSt').tBodies[0].innerHTML = o.st.map(function (x) {
+      return '<tr><td>' + x.id + ' · ' + x.ad + '</td><td>' + fmt(x.T, 1) + '</td><td>' + fmt(x.P / 1e3, 1) + '</td><td>' + fmt(x.W, 2) + '</td></tr>';
+    }).join('');
+  }
+
+  // ---- çizim yardımcıları
+  function prep(cv) {
+    var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+    var c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, r.width, r.height);
+    return { c: c, w: r.width, h: r.height };
+  }
+  // sıcaklık -> renk (200 K mavi ... 1900 K kırmızı); her iki temada aynı veri ölçeği
+  var STOPS = [[200, [40, 110, 200]], [350, [60, 170, 205]], [700, [235, 200, 70]], [1100, [240, 130, 40]], [1500, [215, 55, 40]], [1900, [150, 20, 60]]];
+  function tcol(T, a) {
+    var i = 0; T = Math.max(200, Math.min(1900, T));
+    while (i < STOPS.length - 2 && T > STOPS[i + 1][0]) i++;
+    var p = STOPS[i], q = STOPS[i + 1], u = (T - p[0]) / (q[0] - p[0]);
+    return 'rgba(' + [0, 1, 2].map(function (k) { return Math.round(p[1][k] + (q[1][k] - p[1][k]) * u); }).join(',') + ',' + (a == null ? 1 : a) + ')';
+  }
+
+  // ---- motor kesiti
+  var fanAng = 0;
+  function drawCut(o) {
+    var p = prep($('cut')), c = p.c, W = p.w, H = p.h;
+    var T = {}; o.st.forEach(function (x) { T[x.id] = x.T; });
+    var cy = H * 0.47, sx = W * 0.80, x0 = W * 0.035, ry = H * 0.36;
+    function X(x) { return x0 + x * sx; } function Yr(r) { return r * ry; }
+    function band(xa, xb, ria, rib, roa, rob, Ta, Tb) {          // simetrik halka kesiti
+      [1, -1].forEach(function (sg) {
+        var gr = c.createLinearGradient(X(xa), 0, X(xb), 0); gr.addColorStop(0, tcol(Ta)); gr.addColorStop(1, tcol(Tb));
+        c.fillStyle = gr; c.beginPath();
+        c.moveTo(X(xa), cy - sg * Yr(ria)); c.lineTo(X(xb), cy - sg * Yr(rib)); c.lineTo(X(xb), cy - sg * Yr(rob)); c.lineTo(X(xa), cy - sg * Yr(roa)); c.closePath(); c.fill();
+      });
+    }
+    function rows(xa, xb, ria, rib, roa, rob, n) {               // rotor/stator sıraları
+      c.strokeStyle = css.panel; c.lineWidth = 1; c.globalAlpha = 0.55;
+      for (var i = 1; i < 2 * n; i++) {
+        var u = i / (2 * n), x = X(xa + (xb - xa) * u), ri = ria + (rib - ria) * u, ro = roa + (rob - roa) * u;
+        [1, -1].forEach(function (sg) { c.beginPath(); c.moveTo(x, cy - sg * Yr(ri)); c.lineTo(x, cy - sg * Yr(ro)); c.stroke(); });
+      }
+      c.globalAlpha = 1;
+    }
+    function solid(pts, col) {
+      [1, -1].forEach(function (sg) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { c[i ? 'lineTo' : 'moveTo'](X(q[0]), cy - sg * Yr(q[1])); }); c.closePath(); c.fill(); });
+    }
+    // egzoz izleri
+    var vmax = 520;
+    [[0.62, 0.56, 0.93, T['18'], o.V18], [0.98, 0.06, 0.37, T['8'], o.V8]].forEach(function (e) {
+      var len = 0.10 + 0.34 * Math.min(1, e[4] / vmax), gr = c.createLinearGradient(X(e[0]), 0, X(e[0] + len), 0);
+      gr.addColorStop(0, tcol(e[3], 0.55)); gr.addColorStop(1, tcol(e[3], 0));
+      [1, -1].forEach(function (sg) { c.fillStyle = gr; c.fillRect(X(e[0]), cy - sg * Yr(e[2]), X(e[0] + len) - X(e[0]), sg * (Yr(e[2]) - Yr(e[1]))); });
+    });
+    // gaz yolu
+    band(0.02, 0.14, 0.02, 0.30, 1.0, 1.0, T['0'], T['2']);                 // giriş
+    band(0.14, 0.20, 0.30, 0.34, 1.0, 1.0, T['2'], T['13']);                // fan
+    band(0.20, 0.62, 0.60, 0.56, 1.0, 0.93, T['13'], T['18']);              // baypas kanalı
+    band(0.20, 0.34, 0.34, 0.30, 0.52, 0.44, T['2'], T['25']);              // booster
+    band(0.34, 0.38, 0.30, 0.16, 0.44, 0.30, T['25'], T['25']);             // geçiş kanalı
+    band(0.38, 0.55, 0.16, 0.25, 0.30, 0.30, T['25'], T['3']);              // HPC
+    band(0.55, 0.64, 0.20, 0.24, 0.34, 0.32, T['4'] * 0.92, T['4']);        // yanma odası
+    band(0.64, 0.70, 0.24, 0.25, 0.32, 0.35, T['41'], T['45']);             // HPT
+    band(0.70, 0.73, 0.25, 0.28, 0.35, 0.40, T['45'], T['45']);
+    band(0.73, 0.89, 0.28, 0.26, 0.40, 0.54, T['45'], T['5']);              // LPT
+    band(0.89, 0.98, 0.26, 0.06, 0.54, 0.37, T['5'], T['8']);               // çekirdek lülesi
+    rows(0.20, 0.34, 0.34, 0.30, 0.52, 0.44, g.nBoost); rows(0.38, 0.55, 0.16, 0.25, 0.30, 0.30, g.nHpc);
+    rows(0.64, 0.70, 0.24, 0.25, 0.32, 0.35, g.nHpt); rows(0.73, 0.89, 0.28, 0.26, 0.40, 0.54, g.nLpt);
+    // yapı
+    solid([[0.0, 1.06], [0.03, 1.0], [0.62, 0.93], [0.62, 0.98], [0.40, 1.19], [0.10, 1.20], [0.02, 1.13]], css.metal);                 // motor kaportası
+    solid([[0.20, 0.52], [0.20, 0.60], [0.62, 0.56], [0.98, 0.37], [0.89, 0.54], [0.73, 0.40], [0.64, 0.32], [0.55, 0.34], [0.38, 0.30], [0.34, 0.44]], css['metal-2']); // çekirdek kaportası
+    solid([[0.055, 0], [0.14, 0.30], [0.20, 0.34], [0.34, 0.30], [0.38, 0.16], [0.55, 0.25], [0.55, 0.20], [0.64, 0.24], [0.73, 0.28], [0.89, 0.26], [0.98, 0.06], [1.04, 0]], css.metal); // göbek, diskler, kuyruk konisi
+    c.fillStyle = css['metal-2']; c.fillRect(X(0.16), cy - Yr(0.035), X(0.86) - X(0.16), 2 * Yr(0.035));                                 // LP mili
+    // fan kanatları (yandan görünüş: dönen kanat uçları dikey olarak kayar)
+    c.strokeStyle = css.panel; c.lineWidth = 1.2; c.globalAlpha = 0.7;
+    for (var k = 0; k < 18; k++) {
+      var a = fanAng + k * Math.PI * 2 / 18, sn = Math.sin(a);
+      if (Math.cos(a) < 0) continue;
+      var r1 = 0.32, yy = cy - Yr(r1 + (1.0 - r1) * Math.abs(sn)) * (sn < 0 ? -1 : 1);
+      c.beginPath(); c.moveTo(X(0.145), yy); c.lineTo(X(0.195), yy + Yr(0.03) * Math.cos(a)); c.stroke();
+    }
+    c.globalAlpha = 1;
+    // istasyon etiketleri
+    c.font = '500 11px ' + getComputedStyle(document.body).getPropertyValue('--mono'); c.textAlign = 'center';
+    var lab = [['2', 0.10], ['25', 0.36], ['3', 0.55], ['4', 0.64], ['45', 0.715], ['5', 0.89]], narrow = W < 520;
+    lab.forEach(function (l) {
+      var x = X(l[1]);
+      c.strokeStyle = css.muted; c.lineWidth = 1; c.setLineDash([2, 3]); c.beginPath(); c.moveTo(x, cy + Yr(0.5)); c.lineTo(x, H - 26); c.stroke(); c.setLineDash([]);
+      c.fillStyle = css.muted; c.fillText(l[0], x, H - 15);
+      if (!narrow) { c.fillStyle = css.fg; c.fillText(fmt(T[l[0]]) + ' K', x, H - 3); }
+    });
+    // sıcaklık ölçeği
+    var bx = X(1.07), bw = 9, bt = cy - Yr(0.95), bh = Yr(1.9), i2;
+    for (i2 = 0; i2 < bh; i2++) { c.fillStyle = tcol(1900 - 1700 * i2 / bh); c.fillRect(bx, bt + i2, bw, 1.5); }
+    c.fillStyle = css.muted; c.textAlign = 'left';
+    (narrow ? [1900, 1100, 300] : [1900, 1500, 1100, 700, 300]).forEach(function (t) { c.fillText(t + (narrow ? '' : ' K'), bx + bw + 4, bt + (1900 - t) / 1700 * bh + 4); });
+  }
+
+  // ---- genel eksenli çizgi grafiği
+  function axes(p, xr, yr, xl, yl, xt, yt) {
+    var c = p.c, m = { l: 44, r: 10, t: 8, b: 30 }, w = p.w - m.l - m.r, h = p.h - m.t - m.b;
+    var fx = function (x) { return m.l + (x - xr[0]) / (xr[1] - xr[0]) * w; }, fy = function (y) { return m.t + h - (y - yr[0]) / (yr[1] - yr[0]) * h; };
+    c.font = '11px ' + getComputedStyle(document.body).getPropertyValue('--mono'); c.lineWidth = 1;
+    c.strokeStyle = css.line; c.fillStyle = css.muted;
+    c.textAlign = 'right'; yt.forEach(function (v) { c.beginPath(); c.moveTo(m.l, fy(v)); c.lineTo(m.l + w, fy(v)); c.stroke(); c.fillText(fmt(v, v % 1 ? 1 : 0), m.l - 6, fy(v) + 4); });
+    c.textAlign = 'center'; xt.forEach(function (v) { c.beginPath(); c.moveTo(fx(v), m.t + h); c.lineTo(fx(v), m.t + h + 4); c.stroke(); c.fillText(fmt(v, v % 1 ? 1 : 0), fx(v), m.t + h + 15); });
+    c.fillText(xl, m.l + w / 2, p.h - 2);
+    c.save(); c.translate(11, m.t + h / 2); c.rotate(-Math.PI / 2); c.fillText(yl, 0, 0); c.restore();
+    c.strokeStyle = css.muted; c.strokeRect(m.l, m.t, w, h);
+    return { fx: fx, fy: fy, clip: function () { c.save(); c.beginPath(); c.rect(m.l, m.t, w, h); c.clip(); } };
+  }
+  function line(c, a, pts, col, lw) {
+    c.strokeStyle = col; c.lineWidth = lw || 1.8; c.lineJoin = 'round'; c.beginPath();
+    pts.forEach(function (q, i) { c[i ? 'lineTo' : 'moveTo'](a.fx(q[0]), a.fy(q[1])); }); c.stroke();
+  }
+  function ticks(lo, hi, n) {
+    var st = Math.pow(10, Math.floor(Math.log10((hi - lo) / n))), r = (hi - lo) / n / st; st *= r > 5 ? 10 : r > 2 ? 5 : r > 1 ? 2 : 1;
+    var out = [], v = Math.ceil(lo / st) * st; for (; v <= hi + 1e-9; v += st) out.push(+v.toFixed(6)); return out;
+  }
+  function drawTime() {
+    var p = prep($('cTime')), t1 = sim.t, t0 = t1 - 30;
+    var a = axes(p, [-30, 0], [0, 110], 'süre, s', '%', [-30, -20, -10, 0], [0, 25, 50, 75, 100]);
+    a.clip();
+    [[1, css.s1], [2, css.s3], [3, css.s2], [4, css.s4]].forEach(function (k) { line(p.c, a, hist.filter(function (q) { return q[0] >= t0; }).map(function (q) { return [q[0] - t1, q[k[0]]]; }), k[1]); });
+    p.c.restore();
+  }
+  function drawMap(o) {
+    var p = prep($('cMap')), xs = opLine.map(function (q) { return q[0]; }), ys = opLine.map(function (q) { return q[1]; });
+    var xr = [Math.min.apply(0, xs) * 0.9, Math.max.apply(0, xs) * 1.06], yr = [Math.min.apply(0, ys) * 0.8, Math.max.apply(0, ys) * 1.15];
+    var a = axes(p, xr, yr, 'HPC düzeltilmiş debi, kg/s', 'HPC basınç oranı', ticks(xr[0], xr[1], 4), ticks(yr[0], yr[1], 5));
+    a.clip(); line(p.c, a, opLine, css.muted, 1.5); line(p.c, a, trail, css.s2, 2);
+    p.c.fillStyle = css.s2; p.c.beginPath(); p.c.arc(a.fx(o.wcHpc), a.fy(o.HPR), 4.5, 0, 7); p.c.fill(); p.c.restore();
+  }
+  function drawTs(o) {
+    var ids = ['0', '2', '25', '3', '4', '41', '45', '5', '8'], st = {}; o.st.forEach(function (x) { st[x.id] = x; });
+    var pts = ids.map(function (id) { var x = st[id]; return [M.entropy(x.T, x.P, x.f) / 1000, x.T, id]; });
+    var n = M.nozzle(st['8'].P, st['8'].T, st['8'].f, o.amb.P); pts.push([M.entropy(n.Ts, n.Ps, st['8'].f) / 1000, n.Ts, '9']);
+    var p = prep($('cTs')), a = axes(p, [-0.2, 1.6], [0, 2000], 'özgül entropi s − s₀, kJ/kg·K', 'T, K', [0, 0.4, 0.8, 1.2, 1.6], [0, 500, 1000, 1500, 2000]);
+    a.clip(); line(p.c, a, pts, css.s1, 2);
+    p.c.font = '11px ' + getComputedStyle(document.body).getPropertyValue('--mono'); p.c.textAlign = 'left';
+    pts.forEach(function (q) {
+      p.c.fillStyle = tcol(q[1]); p.c.beginPath(); p.c.arc(a.fx(q[0]), a.fy(q[1]), 3.5, 0, 7); p.c.fill();
+      if (q[2] !== '41' && q[2] !== '2' && q[2] !== '8') { p.c.fillStyle = css.fg; p.c.fillText(q[2], a.fx(q[0]) + 6, a.fy(q[1]) + (q[2] === '45' ? -7 : 4)); }
+    });
+    p.c.restore();
+  }
+
+  // ---- ana döngü
+  var last = null, acc = 0, slow = 0, DT = 0.02;
+  function resteady() {
+    var o = M.steadyTarget(d, fc, 'NL', sim.n1Demand(pla), 1500, sim.rt.max);
+    sim.NL = o.NL; sim.NH = o.NH; sim.Wf = o.Wf; sim.integ = o.Wf; sim.out = o;
+  }
+  function frame(ts) {
+    if (last == null) last = ts;
+    var el = Math.min(0.1, (ts - last) / 1000); last = ts;
+    if (!paused) {
+      acc += el;
+      while (acc >= DT) {
+        var o = sim.step(DT, pla); acc -= DT;
+        if (!isFinite(o.Fn) || !isFinite(sim.NL) || !isFinite(sim.NH)) { resteady(); }
+        hist.push([sim.t, sim.NL * 100, sim.NH * 100, 100 * sim.out.Fn / sim.rt.max.Fn, 100 * sim.out.T4 / s.T4max]);
+        trail.push([sim.out.wcHpc, sim.out.HPR]);
+      }
+      if (hist.length > 1700) hist.splice(0, hist.length - 1600);
+      if (trail.length > 600) trail.splice(0, trail.length - 600);
+      fanAng += el * sim.NL * 7;
+    }
+    var q = sim.out;
+    drawCut(q); drawTime(); drawMap(q); drawTs(q);
+    setG('n1', fmt(q.NL * 100, 1), q.NL / s.n1Max, q.NL > s.n1Max);
+    setG('n2', fmt(q.NH * 100, 1), q.NH / s.n2Max, q.NH > s.n2Max + 0.004);
+    setG('egt', fmt(q.st[7].T - 273.15), (q.st[7].T - 273.15) / 1060, q.T4 > s.T4max + 12);
+    setG('ff', fmt(q.Wf * 3600), q.Wf / slsR.max.Wf / 1.1, false);
+    setG('fn', fmt(q.Fn / 1e3, 1), q.Fn / slsR.max.Fn, false);
+    setG('sfc', q.Fn > 500 ? fmt(q.tsfc * 1e6, 2) : '–', q.Fn > 500 ? q.tsfc * 1e6 / 30 : 0, false);
+    if (ts - slow > 250) {
+      slow = ts; stTable(q);
+      $('stA').textContent = 'T4 ' + fmt(q.T4) + ' K · OPR ' + fmt(q.OPR, 1) + ' · BPR ' + fmt(q.BPR, 1) + ' · hava debisi ' + fmt(q.W2) + ' kg/s · azami anmayı sınırlayan: ' + sim.rt.limiter;
+      $('stB').textContent = sim.limiter ? 'Etkin sınırlayıcı: ' + sim.limiter : '';
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+<!--/PAGE-->
+</body>
+</html>
