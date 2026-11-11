@@ -70,15 +70,31 @@ button.primary { background: var(--accent); color: var(--accent-fg); border-colo
 .stage { display: flex; flex-direction: column; gap: 14px; min-width: 0 }
 .cut { padding: 10px 10px 6px }
 canvas { display: block; width: 100%; max-width: 100% }
-#cut { aspect-ratio: 2.35 / 1 }
-@media (max-width: 560px) { #cut { aspect-ratio: 1.55 / 1 } }
+.view { position: relative; padding: 0; overflow: hidden; background: #0b0f14 }
+#v3d { aspect-ratio: 2.05 / 1; width: 100% }
+#v3d canvas { width: 100%; height: 100% }
+@media (max-width: 560px) { #v3d { aspect-ratio: 1.25 / 1 } }
+/* 3B görünüm her iki temada da koyu bir test hücresidir; üstündeki yazılar sabit açık renk kullanır */
+.view .hud { position: absolute; left: 12px; top: 10px; display: flex; flex-direction: column; gap: 2px; pointer-events: none; color: #e6ecf2 }
+.view .hud b { font: 600 20px var(--display); letter-spacing: .08em; color: #ffa63d }
+.view .hud span { font: 12px var(--mono); color: #93a2b2 }
+.view .vb { position: absolute; right: 10px; top: 10px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 60% }
+.view .vb button { background: rgba(22,30,39,.82); color: #e6ecf2; border-color: #2b3745; min-height: 30px; padding: 4px 9px; font-size: 12px }
+.view .vb button[aria-pressed="true"] { border-color: #ffa63d; color: #ffa63d }
+.view .hint { position: absolute; right: 12px; bottom: 8px; font: 11px var(--mono); color: #93a2b2; pointer-events: none }
+.view .nogl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: #93a2b2 }
+.dials { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden }
+@media (max-width: 560px) { .dials { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+.dials canvas { aspect-ratio: 1.25 / 1; background: var(--panel) }
+.sw { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--fg) }
+.sw input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0 }
+button.danger { border-color: var(--warn); color: var(--warn) }
 #tDes td, #tSt td:first-child, #tPerf td:first-child { white-space: normal }
 .status { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between; font: 12px var(--mono); color: var(--muted); padding: 4px 6px 0 }
 .chip { color: var(--accent) }
 
-.gauges { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden }
-@media (max-width: 880px) { .gauges { grid-template-columns: repeat(3, minmax(0, 1fr)) } }
-@media (max-width: 420px) { .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
+.gauges { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 4px; overflow: hidden }
+@media (max-width: 560px) { .gauges { grid-template-columns: repeat(2, minmax(0, 1fr)) } }
 .g { background: var(--panel); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0 }
 .g .k { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted) }
 .g .v { font: 500 24px/1.1 var(--mono); font-variant-numeric: tabular-nums }
@@ -132,7 +148,10 @@ section { display: flex; flex-direction: column; gap: 12px }
       <div class="btns">
         <button id="slamUp" class="primary">Ani tam gaz</button>
         <button id="slamDn">Ani rölanti</button>
+        <button id="master" class="danger">Motoru durdur</button>
+        <button id="snd" aria-pressed="false">Ses: kapalı</button>
       </div>
+      <label class="sw" for="prot"><input type="checkbox" id="prot" checked> Hızlanma ve sıcaklık korumaları</label>
       <div class="field">
         <label for="alt">İrtifa <output id="altO"></output></label>
         <input type="range" id="alt" min="0" max="12500" step="100" value="0">
@@ -157,11 +176,18 @@ section { display: flex; flex-direction: column; gap: 12px }
     </div>
 
     <div class="stage">
-      <div class="panel cut">
-        <canvas id="cut" role="img" aria-label="Motorun boyuna kesiti; bileşenler anlık gaz sıcaklığına göre renklendirilir"></canvas>
-        <div class="status"><span id="stA"></span><span class="chip" id="stB"></span></div>
+      <div class="panel view">
+        <div id="v3d" role="img" aria-label="Motorun üç boyutlu görünümü; fan ve makaralar anlık devirle döner, sıcak bölüm sıcaklığa göre akkorlaşır"></div>
+        <div class="hud"><b id="phase"></b><span id="stB"></span></div>
+        <div class="vb">
+          <button id="bCut" aria-pressed="true">Kesit</button>
+          <button data-v="kesit">Çapraz</button><button data-v="on">Ön</button><button data-v="yan">Yan</button><button data-v="arka">Arka</button>
+        </div>
+        <div class="hint">Döndürmek için sürükleyin</div>
       </div>
+      <div class="dials"><canvas id="dN1"></canvas><canvas id="dEgt"></canvas><canvas id="dN2"></canvas><canvas id="dFf"></canvas></div>
       <div class="gauges" id="gauges"></div>
+      <div class="status"><span id="stA"></span></div>
     </div>
   </div>
 
@@ -174,7 +200,7 @@ section { display: flex; flex-direction: column; gap: 12px }
     <div class="panel chart">
       <h3>HPC çalışma hattı</h3>
       <canvas id="cMap"></canvas>
-      <div class="legend"><span><i style="background:var(--muted)"></i>Sürekli rejim hattı</span><span><i style="background:var(--s2)"></i>Anlık yörünge (son 12 s)</span></div>
+      <div class="legend"><span><i style="background:var(--warn)"></i>Pompaj hattı</span><span><i style="background:var(--muted)"></i>Sürekli rejim hattı</span><span><i style="background:var(--s2)"></i>Anlık yörünge (son 12 s)</span></div>
     </div>
     <div class="panel chart">
       <h3>T–s diyagramı · çekirdek akımı</h3>
@@ -205,14 +231,17 @@ section { display: flex; flex-direction: column; gap: 12px }
           <li>Sıcaklığa ve bileşime bağlı gaz özellikleri (hava ve kerosen yanma ürünleri), ISA atmosfer.</li>
           <li>Tasarım noktası çevrimi: politropik verimler, kanal ve yanma odası basınç kayıpları, türbin soğutma havası, sızdırma ve güç çekişi.</li>
           <li>Tasarım dışı eşleşme: boğulmuş türbin kılavuz kanatları (sabit kapasite), sabit alanlı yakınsak lüleler, iki makarada güç dengesi.</li>
-          <li>Geçici rejim: makara atalet dinamiği, N1 kapalı çevrim yakıt denetimi, Wf/P3 hızlanma ve yavaşlama çizelgeleri, T4 ve N2 sınırlayıcıları.</li>
+          <li>Geçici rejim: makara atalet dinamiği, N1 kapalı çevrim yakıt denetimi, pompaj payı korumalı hızlanma çizelgesi, yavaşlama çizelgesi, T4 ve N2 sınırlayıcıları.</li>
+          <li>Çalıştırma ve durdurma: marş motoru, ateşleme, EGT zirvesi, yavaşlama ve uçuşta rüzgâr değirmeni; korumalar kapatılırsa pompaj olayı.</li>
           <li>Kütle ve enerji korunumu ile 48 uçuş koşulunda yakınsama otomatik testlerle doğrulanır.</li>
         </ul>
       </div>
       <div>
         <h3>Modelin yapmadıkları</h3>
         <ul>
-          <li>Kompresör ve türbin haritaları yoktur. İş katsayısı sabit, verim düzeltilmiş hıza göre basit bir eğriyle değişir; bu yüzden pompaj (surge) payı hesaplanmaz.</li>
+          <li>Ölçülmüş kompresör ve türbin haritaları yoktur. İş katsayısı sabit, verim düzeltilmiş hıza göre basit bir eğriyle değişir; pompaj hattı jenerik bir eğridir, bu motorun gerçek sınırı değildir.</li>
+          <li>Rölanti altı (çalıştırma, durdurma) davranışı çevrim çözümü değil, tipik sürelere ayarlanmış yarı ampirik bir modeldir.</li>
+          <li>3B görünümde dönüş hızı görsel olarak ölçeklenir; gerçek devirde kanatlar ekranda seçilemez. Ses, devir ve itkiden sentezlenir, kayıt değildir.</li>
           <li>Kanat aerodinamiği (CFD), yapısal ve ısıl analiz, titreşim, malzeme ömrü, gürültü ve emisyon hesabı kapsam dışıdır.</li>
           <li>Sonuçlar deney verisiyle değil, bu motor sınıfının yayımlanmış tipik değer aralıklarıyla karşılaştırılmıştır.</li>
           <li>Bu bir ön tasarım (kavramsal) çalışmasıdır. Üretilebilir ve sertifikalandırılabilir bir motor için gereken ayrıntı tasarım, test ve belgelendirme adımlarını içermez.</li>
@@ -222,7 +251,9 @@ section { display: flex; flex-direction: column; gap: 12px }
   </section>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="model.js"></script>
+<script src="motor3d.js"></script>
 <script>
 (function () {
   'use strict';
@@ -232,7 +263,7 @@ section { display: flex; flex-direction: column; gap: 12px }
   var css = {};
   function readCss() {
     var cs = getComputedStyle(document.documentElement);
-    ['bg', 'panel', 'inset', 'line', 'fg', 'muted', 'accent', 's1', 's2', 's3', 's4', 'metal', 'metal-2'].forEach(function (k) { css[k] = cs.getPropertyValue('--' + k).trim(); });
+    ['bg', 'panel', 'inset', 'line', 'fg', 'muted', 'accent', 's1', 's2', 's3', 's4', 'warn'].forEach(function (k) { css[k] = cs.getPropertyValue('--' + k).trim(); });
   }
   readCss(); setInterval(readCss, 1500);
 
@@ -270,22 +301,22 @@ section { display: flex; flex-direction: column; gap: 12px }
   $('slamUp').onclick = function () { $('pla').value = 100; pla = 1; syncLabels(); };
   $('slamDn').onclick = function () { $('pla').value = 0; pla = 0; syncLabels(); };
   $('pause').onclick = function () { paused = !paused; this.textContent = paused ? 'Sürdür' : 'Duraklat'; };
+  $('master').onclick = function () { sim.master = !sim.master; };
+  $('prot').onchange = function () { sim.protect = this.checked; };
+  function forceRun(o) { sim.mode = 'run'; sim.master = true; sim.surgeT = 0; sim.NL = o.NL; sim.NH = o.NH; sim.Wf = o.Wf; sim.integ = o.Wf; sim.out = o; sim.egt = o.st[7].T; }
   Array.prototype.forEach.call(document.querySelectorAll('button[data-p]'), function (b) {
     b.onclick = function () {
       var p = b.getAttribute('data-p').split(',').map(Number);
       $('alt').value = p[0]; $('mach').value = p[1]; $('dt').value = p[2]; $('pla').value = p[3]; pla = p[3] / 100;
       syncLabels(); applyFlight();
       var o = M.steadyTarget(d, fc, 'NL', sim.n1Demand(pla), 1500, sim.rt.max);   // koşula doğrudan otur
-      sim.NL = o.NL; sim.NH = o.NH; sim.Wf = o.Wf; sim.integ = o.Wf; sim.out = o;
+      forceRun(o);
     };
   });
   syncLabels();
 
   // ---- göstergeler
-  var G = [
-    ['n1', 'N1', '%'], ['n2', 'N2', '%'], ['egt', 'EGT (T45)', '°C'],
-    ['ff', 'Yakıt debisi', 'kg/sa'], ['fn', 'Net itki', 'kN'], ['sfc', 'TSFC', 'mg/N·s']
-  ];
+  var G = [['fn', 'Net itki', 'kN'], ['sfc', 'TSFC', 'mg/N·s'], ['sm', 'HPC pompaj payı', '%'], ['t4', 'T4', 'K']];
   $('gauges').innerHTML = G.map(function (x) {
     return '<div class="g" id="g_' + x[0] + '"><span class="k">' + x[1] + '</span><span class="v">–</span><span class="u">' + x[2] + '</span><div class="bar"><i></i></div></div>';
   }).join('');
@@ -342,80 +373,57 @@ section { display: flex; flex-direction: column; gap: 12px }
     return 'rgba(' + [0, 1, 2].map(function (k) { return Math.round(p[1][k] + (q[1][k] - p[1][k]) * u); }).join(',') + ',' + (a == null ? 1 : a) + ')';
   }
 
-  // ---- motor kesiti
-  var fanAng = 0;
-  function drawCut(o) {
-    var p = prep($('cut')), c = p.c, W = p.w, H = p.h;
-    var T = {}; o.st.forEach(function (x) { T[x.id] = x.T; });
-    var cy = H * 0.47, sx = W * 0.80, x0 = W * 0.035, ry = H * 0.36;
-    function X(x) { return x0 + x * sx; } function Yr(r) { return r * ry; }
-    function band(xa, xb, ria, rib, roa, rob, Ta, Tb) {          // simetrik halka kesiti
-      [1, -1].forEach(function (sg) {
-        var gr = c.createLinearGradient(X(xa), 0, X(xb), 0); gr.addColorStop(0, tcol(Ta)); gr.addColorStop(1, tcol(Tb));
-        c.fillStyle = gr; c.beginPath();
-        c.moveTo(X(xa), cy - sg * Yr(ria)); c.lineTo(X(xb), cy - sg * Yr(rib)); c.lineTo(X(xb), cy - sg * Yr(rob)); c.lineTo(X(xa), cy - sg * Yr(roa)); c.closePath(); c.fill();
-      });
-    }
-    function rows(xa, xb, ria, rib, roa, rob, n) {               // rotor/stator sıraları
-      c.strokeStyle = css.panel; c.lineWidth = 1; c.globalAlpha = 0.55;
-      for (var i = 1; i < 2 * n; i++) {
-        var u = i / (2 * n), x = X(xa + (xb - xa) * u), ri = ria + (rib - ria) * u, ro = roa + (rob - roa) * u;
-        [1, -1].forEach(function (sg) { c.beginPath(); c.moveTo(x, cy - sg * Yr(ri)); c.lineTo(x, cy - sg * Yr(ro)); c.stroke(); });
-      }
-      c.globalAlpha = 1;
-    }
-    function solid(pts, col) {
-      [1, -1].forEach(function (sg) { c.fillStyle = col; c.beginPath(); pts.forEach(function (q, i) { c[i ? 'lineTo' : 'moveTo'](X(q[0]), cy - sg * Yr(q[1])); }); c.closePath(); c.fill(); });
-    }
-    // egzoz izleri
-    var vmax = 520;
-    [[0.62, 0.56, 0.93, T['18'], o.V18], [0.98, 0.06, 0.37, T['8'], o.V8]].forEach(function (e) {
-      var len = 0.10 + 0.34 * Math.min(1, e[4] / vmax), gr = c.createLinearGradient(X(e[0]), 0, X(e[0] + len), 0);
-      gr.addColorStop(0, tcol(e[3], 0.55)); gr.addColorStop(1, tcol(e[3], 0));
-      [1, -1].forEach(function (sg) { c.fillStyle = gr; c.fillRect(X(e[0]), cy - sg * Yr(e[2]), X(e[0] + len) - X(e[0]), sg * (Yr(e[2]) - Yr(e[1]))); });
-    });
-    // gaz yolu
-    band(0.02, 0.14, 0.02, 0.30, 1.0, 1.0, T['0'], T['2']);                 // giriş
-    band(0.14, 0.20, 0.30, 0.34, 1.0, 1.0, T['2'], T['13']);                // fan
-    band(0.20, 0.62, 0.60, 0.56, 1.0, 0.93, T['13'], T['18']);              // baypas kanalı
-    band(0.20, 0.34, 0.34, 0.30, 0.52, 0.44, T['2'], T['25']);              // booster
-    band(0.34, 0.38, 0.30, 0.16, 0.44, 0.30, T['25'], T['25']);             // geçiş kanalı
-    band(0.38, 0.55, 0.16, 0.25, 0.30, 0.30, T['25'], T['3']);              // HPC
-    band(0.55, 0.64, 0.20, 0.24, 0.34, 0.32, T['4'] * 0.92, T['4']);        // yanma odası
-    band(0.64, 0.70, 0.24, 0.25, 0.32, 0.35, T['41'], T['45']);             // HPT
-    band(0.70, 0.73, 0.25, 0.28, 0.35, 0.40, T['45'], T['45']);
-    band(0.73, 0.89, 0.28, 0.26, 0.40, 0.54, T['45'], T['5']);              // LPT
-    band(0.89, 0.98, 0.26, 0.06, 0.54, 0.37, T['5'], T['8']);               // çekirdek lülesi
-    rows(0.20, 0.34, 0.34, 0.30, 0.52, 0.44, g.nBoost); rows(0.38, 0.55, 0.16, 0.25, 0.30, 0.30, g.nHpc);
-    rows(0.64, 0.70, 0.24, 0.25, 0.32, 0.35, g.nHpt); rows(0.73, 0.89, 0.28, 0.26, 0.40, 0.54, g.nLpt);
-    // yapı
-    solid([[0.0, 1.06], [0.03, 1.0], [0.62, 0.93], [0.62, 0.98], [0.40, 1.19], [0.10, 1.20], [0.02, 1.13]], css.metal);                 // motor kaportası
-    solid([[0.20, 0.52], [0.20, 0.60], [0.62, 0.56], [0.98, 0.37], [0.89, 0.54], [0.73, 0.40], [0.64, 0.32], [0.55, 0.34], [0.38, 0.30], [0.34, 0.44]], css['metal-2']); // çekirdek kaportası
-    solid([[0.055, 0], [0.14, 0.30], [0.20, 0.34], [0.34, 0.30], [0.38, 0.16], [0.55, 0.25], [0.55, 0.20], [0.64, 0.24], [0.73, 0.28], [0.89, 0.26], [0.98, 0.06], [1.04, 0]], css.metal); // göbek, diskler, kuyruk konisi
-    c.fillStyle = css['metal-2']; c.fillRect(X(0.16), cy - Yr(0.035), X(0.86) - X(0.16), 2 * Yr(0.035));                                 // LP mili
-    // fan kanatları (yandan görünüş: dönen kanat uçları dikey olarak kayar)
-    c.strokeStyle = css.panel; c.lineWidth = 1.2; c.globalAlpha = 0.7;
-    for (var k = 0; k < 18; k++) {
-      var a = fanAng + k * Math.PI * 2 / 18, sn = Math.sin(a);
-      if (Math.cos(a) < 0) continue;
-      var r1 = 0.32, yy = cy - Yr(r1 + (1.0 - r1) * Math.abs(sn)) * (sn < 0 ? -1 : 1);
-      c.beginPath(); c.moveTo(X(0.145), yy); c.lineTo(X(0.195), yy + Yr(0.03) * Math.cos(a)); c.stroke();
-    }
-    c.globalAlpha = 1;
-    // istasyon etiketleri
-    c.font = '500 11px ' + getComputedStyle(document.body).getPropertyValue('--mono'); c.textAlign = 'center';
-    var lab = [['2', 0.10], ['25', 0.36], ['3', 0.55], ['4', 0.64], ['45', 0.715], ['5', 0.89]], narrow = W < 520;
-    lab.forEach(function (l) {
-      var x = X(l[1]);
-      c.strokeStyle = css.muted; c.lineWidth = 1; c.setLineDash([2, 3]); c.beginPath(); c.moveTo(x, cy + Yr(0.5)); c.lineTo(x, H - 26); c.stroke(); c.setLineDash([]);
-      c.fillStyle = css.muted; c.fillText(l[0], x, H - 15);
-      if (!narrow) { c.fillStyle = css.fg; c.fillText(fmt(T[l[0]]) + ' K', x, H - 3); }
-    });
-    // sıcaklık ölçeği
-    var bx = X(1.07), bw = 9, bt = cy - Yr(0.95), bh = Yr(1.9), i2;
-    for (i2 = 0; i2 < bh; i2++) { c.fillStyle = tcol(1900 - 1700 * i2 / bh); c.fillRect(bx, bt + i2, bw, 1.5); }
-    c.fillStyle = css.muted; c.textAlign = 'left';
-    (narrow ? [1900, 1100, 300] : [1900, 1500, 1100, 700, 300]).forEach(function (t) { c.fillText(t + (narrow ? '' : ' K'), bx + bw + 4, bt + (1900 - t) / 1700 * bh + 4); });
+  // ---- kokpit tipi kadranlar
+  function dial(id, frac, red, label, text, unit, hot) {
+    var p = prep($(id)), c = p.c, cx = p.w / 2, cy = p.h * 0.56, r = Math.min(p.w * 0.36, p.h * 0.44), a0 = Math.PI * 0.8, a1 = Math.PI * 2.2;
+    var mono = getComputedStyle(document.body).getPropertyValue('--mono'), A = function (f) { return a0 + (a1 - a0) * Math.max(0, Math.min(1.06, f)); };
+    c.lineWidth = 5; c.strokeStyle = css.line; c.beginPath(); c.arc(cx, cy, r, a0, a1); c.stroke();
+    c.strokeStyle = css.warn; c.beginPath(); c.arc(cx, cy, r, A(red), a1); c.stroke();
+    c.strokeStyle = hot ? css.warn : css.s1; c.beginPath(); c.arc(cx, cy, r, a0, A(frac)); c.stroke();
+    c.lineWidth = 1; c.strokeStyle = css.muted;
+    for (var i = 0; i <= 10; i++) { var a = A(i / 10); c.beginPath(); c.moveTo(cx + Math.cos(a) * (r - 9), cy + Math.sin(a) * (r - 9)); c.lineTo(cx + Math.cos(a) * (r - 4), cy + Math.sin(a) * (r - 4)); c.stroke(); }
+    var an = A(frac); c.lineWidth = 2.5; c.strokeStyle = css.fg; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(an) * (r - 11), cy + Math.sin(an) * (r - 11)); c.stroke();
+    c.fillStyle = css.fg; c.beginPath(); c.arc(cx, cy, 3.5, 0, 7); c.fill();
+    c.textAlign = 'center'; c.fillStyle = hot ? css.warn : css.fg; c.font = '500 ' + Math.round(r * 0.36) + 'px ' + mono; c.fillText(text, cx, cy + r * 0.62);
+    c.fillStyle = css.muted; c.font = '11px ' + mono; c.fillText(unit, cx, cy + r * 0.62 + 14);
+    c.textAlign = 'left'; c.font = '600 12px ' + mono; c.fillText(label, 10, 18);
+  }
+
+  // ---- 3B görünüm
+  var view = null;
+  try { if (window.THREE && window.Engine3D) view = Engine3D($('v3d'), g); } catch (e) { view = null; }
+  if (!view) $('v3d').innerHTML = '<div class="nogl">3B görünüm bu cihazda açılamadı (WebGL gerekli). Göstergeler ve grafikler çalışmaya devam eder.</div>';
+  $('bCut').onclick = function () { if (!view) return; view.setCut(!view.isCut()); this.setAttribute('aria-pressed', view.isCut()); };
+  Array.prototype.forEach.call(document.querySelectorAll('button[data-v]'), function (b) { b.onclick = function () { if (view) view.setView(b.getAttribute('data-v')); }; });
+
+  // ---- motor sesi (devir, itki ve yanmadan sentezlenir)
+  var au = null;
+  function audioInit() {
+    var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    var ac = new AC(), n = ac.sampleRate * 2, buf = ac.createBuffer(1, n, ac.sampleRate), ch = buf.getChannelData(0), i;
+    for (i = 0; i < n; i++) ch[i] = Math.random() * 2 - 1;
+    var out = ac.createGain(); out.gain.value = 0.6; out.connect(ac.destination);
+    function noise(type, f, q) { var s = ac.createBufferSource(); s.buffer = buf; s.loop = true; var fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q || 0.7; var gn = ac.createGain(); gn.gain.value = 0; s.connect(fl); fl.connect(gn); gn.connect(out); s.start(); return { f: fl.frequency, g: gn.gain }; }
+    function osc(type) { var o = ac.createOscillator(); o.type = type; var lpf = ac.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 3200; var gn = ac.createGain(); gn.gain.value = 0; o.connect(lpf); lpf.connect(gn); gn.connect(out); o.start(); return { f: o.frequency, g: gn.gain }; }
+    return { ac: ac, jet: noise('lowpass', 400), hiss: noise('bandpass', 2500, 0.6), rumble: noise('lowpass', 110), fan: osc('sawtooth'), buzz: osc('sawtooth'), whine: osc('sine'), bang: noise('lowpass', 160) };
+  }
+  $('snd').onclick = function () {
+    if (!au) au = audioInit();
+    if (!au) { this.textContent = 'Ses desteklenmiyor'; return; }
+    var on = this.getAttribute('aria-pressed') !== 'true'; this.setAttribute('aria-pressed', on); this.textContent = on ? 'Ses: açık' : 'Ses: kapalı';
+    if (on) au.ac.resume(); else au.ac.suspend();
+  };
+  function audioUpdate(q) {
+    if (!au || au.ac.state !== 'running') return;
+    var t = au.ac.currentTime, k = 0.08, lit = sim.mode === 'run' || sim.lit, set = function (p, v) { p.setTargetAtTime(v, t, k); };
+    var thr = Math.max(0, q.Fn) / slsR.max.Fn, rpsL = q.NL * g.rpmL / 60, rpsH = q.NH * g.rpmH / 60;
+    set(au.jet.g, 0.05 * q.NL + 0.55 * Math.pow(thr, 0.8)); set(au.jet.f, 250 + 1400 * q.NL);
+    set(au.hiss.g, 0.10 * Math.pow(q.NL, 1.5) + 0.05 * q.NH); set(au.hiss.f, 1200 + 3200 * q.NL);
+    set(au.rumble.g, lit ? 0.25 + 0.35 * thr : 0);
+    set(au.fan.f, Math.max(20, 18 * rpsL)); set(au.fan.g, 0.035 * Math.pow(q.NL, 1.6));
+    set(au.buzz.f, Math.max(20, 3 * rpsL)); set(au.buzz.g, 0.10 * Math.max(0, (q.ncL || q.NL) - 0.84) / 0.16);
+    set(au.whine.f, Math.max(20, 11 * rpsH)); set(au.whine.g, 0.02 * Math.pow(q.NH, 1.2) * (sim.mode === 'run' ? 0.7 : 1.6));
+    if (sim.surgeNow) { au.bang.g.cancelScheduledValues(t); au.bang.g.setValueAtTime(1.8, t); au.bang.g.exponentialRampToValueAtTime(0.001, t + 0.35); }
   }
 
   // ---- genel eksenli çizgi grafiği
@@ -447,10 +455,10 @@ section { display: flex; flex-direction: column; gap: 12px }
     p.c.restore();
   }
   function drawMap(o) {
-    var p = prep($('cMap')), xs = opLine.map(function (q) { return q[0]; }), ys = opLine.map(function (q) { return q[1]; });
-    var xr = [Math.min.apply(0, xs) * 0.9, Math.max.apply(0, xs) * 1.06], yr = [Math.min.apply(0, ys) * 0.8, Math.max.apply(0, ys) * 1.15];
+    var p = prep($('cMap')), xr = [0, d.wcHpcDes * 1.12], yr = [0, d.prSurgeDes * 1.08], sl = [], i;
+    for (i = 1; i <= 40; i++) { var w = xr[1] * i / 40; sl.push([w, M.surgePR(d, w)]); }
     var a = axes(p, xr, yr, 'HPC düzeltilmiş debi, kg/s', 'HPC basınç oranı', ticks(xr[0], xr[1], 4), ticks(yr[0], yr[1], 5));
-    a.clip(); line(p.c, a, opLine, css.muted, 1.5); line(p.c, a, trail, css.s2, 2);
+    a.clip(); line(p.c, a, sl, css.warn, 1.8); line(p.c, a, opLine, css.muted, 1.5); line(p.c, a, trail, css.s2, 2);
     p.c.fillStyle = css.s2; p.c.beginPath(); p.c.arc(a.fx(o.wcHpc), a.fy(o.HPR), 4.5, 0, 7); p.c.fill(); p.c.restore();
   }
   function drawTs(o) {
@@ -468,10 +476,10 @@ section { display: flex; flex-direction: column; gap: 12px }
   }
 
   // ---- ana döngü
-  var last = null, acc = 0, slow = 0, DT = 0.02;
+  var last = null, acc = 0, slow = 0, DT = 0.02, surgeFlash = 0;
   function resteady() {
     var o = M.steadyTarget(d, fc, 'NL', sim.n1Demand(pla), 1500, sim.rt.max);
-    sim.NL = o.NL; sim.NH = o.NH; sim.Wf = o.Wf; sim.integ = o.Wf; sim.out = o;
+    forceRun(o);
   }
   function frame(ts) {
     if (last == null) last = ts;
@@ -479,27 +487,36 @@ section { display: flex; flex-direction: column; gap: 12px }
     if (!paused) {
       acc += el;
       while (acc >= DT) {
-        var o = sim.step(DT, pla); acc -= DT;
+        var o = sim.step(DT, pla); acc -= DT; if (sim.surgeNow) surgeFlash = 1;
         if (!isFinite(o.Fn) || !isFinite(sim.NL) || !isFinite(sim.NH)) { resteady(); }
         hist.push([sim.t, sim.NL * 100, sim.NH * 100, 100 * sim.out.Fn / sim.rt.max.Fn, 100 * sim.out.T4 / s.T4max]);
         trail.push([sim.out.wcHpc, sim.out.HPR]);
       }
       if (hist.length > 1700) hist.splice(0, hist.length - 1600);
       if (trail.length > 600) trail.splice(0, trail.length - 600);
-      fanAng += el * sim.NL * 7;
     }
     var q = sim.out;
-    drawCut(q); drawTime(); drawMap(q); drawTs(q);
-    setG('n1', fmt(q.NL * 100, 1), q.NL / s.n1Max, q.NL > s.n1Max);
-    setG('n2', fmt(q.NH * 100, 1), q.NH / s.n2Max, q.NH > s.n2Max + 0.004);
-    setG('egt', fmt(q.st[7].T - 273.15), (q.st[7].T - 273.15) / 1060, q.T4 > s.T4max + 12);
-    setG('ff', fmt(q.Wf * 3600), q.Wf / slsR.max.Wf / 1.1, false);
+    var lit = sim.mode === 'run' || sim.lit, egtC = sim.egt - 273.15, hotT = sim.mode === 'run' && q.T4 > s.T4max + 12;
+    if (view) view.update(q, paused ? 0 : el, lit);
+    audioUpdate(q); sim.surgeNow = false;
+    drawTime(); drawMap(q); drawTs(q);
+    dial('dN1', q.NL / 1.1, s.n1Max / 1.1, 'N1', fmt(q.NL * 100, 1), '%', q.NL > s.n1Max);
+    dial('dEgt', egtC / 1150, 1060 / 1150, 'EGT', fmt(egtC), '°C', egtC > 1060 || hotT);
+    dial('dN2', q.NH / 1.1, s.n2Max / 1.1, 'N2', fmt(q.NH * 100, 1), '%', q.NH > s.n2Max + 0.004);
+    dial('dFf', q.Wf * 3600 / 4000, 1.01, 'FF', fmt(q.Wf * 3600), 'kg/sa', false);
     setG('fn', fmt(q.Fn / 1e3, 1), q.Fn / slsR.max.Fn, false);
-    setG('sfc', q.Fn > 500 ? fmt(q.tsfc * 1e6, 2) : '–', q.Fn > 500 ? q.tsfc * 1e6 / 30 : 0, false);
+    setG('sfc', q.Fn > 500 && q.Wf > 0 ? fmt(q.tsfc * 1e6, 2) : '–', q.Fn > 500 ? q.tsfc * 1e6 / 30 : 0, false);
+    setG('sm', fmt(q.smHpc * 100, 1), q.smHpc / 0.4, q.smHpc < 0.03);
+    setG('t4', fmt(q.T4), q.T4 / s.T4max, hotT);
+    surgeFlash = Math.max(0, surgeFlash - el * 0.7);
+    $('phase').textContent = surgeFlash > 0 ? 'POMPAJ' : sim.phase();
+    $('phase').style.color = surgeFlash > 0 ? '#ff7a70' : '';
+    $('master').textContent = sim.master ? 'Motoru durdur' : 'Motoru çalıştır';
+    $('master').className = sim.master ? 'danger' : 'primary';
     if (ts - slow > 250) {
       slow = ts; stTable(q);
-      $('stA').textContent = 'T4 ' + fmt(q.T4) + ' K · OPR ' + fmt(q.OPR, 1) + ' · BPR ' + fmt(q.BPR, 1) + ' · hava debisi ' + fmt(q.W2) + ' kg/s · azami anmayı sınırlayan: ' + sim.rt.limiter;
-      $('stB').textContent = sim.limiter ? 'Etkin sınırlayıcı: ' + sim.limiter : '';
+      $('stA').textContent = 'OPR ' + fmt(q.OPR, 1) + ' · BPR ' + fmt(q.BPR, 1) + ' · hava debisi ' + fmt(q.W2) + ' kg/s · azami anmayı sınırlayan: ' + sim.rt.limiter;
+      $('stB').textContent = sim.limiter ? sim.limiter : (sim.surgeCount ? 'Pompaj sayısı: ' + sim.surgeCount : '');
     }
     requestAnimationFrame(frame);
   }

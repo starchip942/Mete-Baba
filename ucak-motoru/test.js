@@ -58,5 +58,21 @@ check('hızlanma sonu sürekli rejime oturur', near(sim.out.Fn, sls.max.Fn, 2e-3
 for (let i = 0; i < 1000; i++) sim.step(0.02, 0);
 check('yavaşlama sonu rölantiye oturur', near(sim.NH, sls.idle.NH, 5e-3), (sim.NH * 100).toFixed(2) + ' % N2');
 
+console.log('Çalıştırma, durdurma, pompaj');
+{
+  const s2 = new M.Sim(d, fc, null); s2.master = true; let peak = 0, tRun = null;
+  for (let i = 0; i < 3000 && !tRun; i++) { s2.step(0.02, 0); peak = Math.max(peak, s2.egt); if (s2.mode === 'run') tRun = s2.t; }
+  check('soğuk çalıştırma 20–60 s içinde rölantiye ulaşır', tRun > 20 && tRun < 60, tRun && tRun.toFixed(1) + ' s');
+  check('çalıştırma EGT zirvesi rölanti EGT değerinin üstünde, 750 °C altında', peak > sls.idle.st[7].T + 100 && peak < 1023, (peak - 273.15).toFixed(0) + ' °C');
+  s2.master = false; for (let i = 0; i < 6000; i++) s2.step(0.02, 0);
+  check('durdurmadan 120 s sonra N2 < %5', s2.NH < 0.05, (s2.NH * 100).toFixed(1) + ' %');
+  const s3 = new M.Sim(d, fc, sls.idle); let minSm = 9;
+  for (let i = 0; i < 800; i++) minSm = Math.min(minSm, s3.step(0.02, 1).smHpc);
+  check('korumalı ani hızlanmada pompaj yok, pay ≥ %5', s3.surgeCount === 0 && minSm >= s.smMin - 1e-3, (minSm * 100).toFixed(1) + ' %');
+  const s4 = new M.Sim(d, fc, sls.idle); s4.protect = false;
+  for (let i = 0; i < 300; i++) s4.step(0.02, 1);
+  check('korumalar kapalıyken ani hızlanma pompaja girer', s4.surgeCount > 0, s4.surgeCount + ' olay / 6 s');
+}
+
 console.log(fail ? '\n' + fail + ' test KALDI' : '\nTüm testler geçti');
 process.exit(fail ? 1 : 0);

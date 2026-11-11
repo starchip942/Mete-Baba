@@ -165,6 +165,7 @@
     iL: 95, iH: 9.5,       // kg.m², makara kutupsal atalet momentleri
     kEtaFan: 0.30, kEtaLpc: 0.35, kEtaHpc: 0.40,  // hız dışı verim düşümü katsayıları
     n1Max: 1.04, n2Max: 1.035,
+    smDes: 0.25, smExp: 1.42, smMin: 0.05,  // HPC tasarım pompaj payı ve pompaj hattı üssü
     kp: 5.0, ki: 5.0        // N1 denetleyici kazançları (azami yakıt debisine göre ölçekli)
   };
 
@@ -259,8 +260,15 @@
     g.length = g.fan.Dt * 1.72;
     d.geom = g;
     d.omegaL = g.rpmL * Math.PI / 30; d.omegaH = g.rpmH * Math.PI / 30;
+    // HPC pompaj (surge) hattı: jenerik harita yaklaşımı. Tasarım noktasında %25 pay,
+    // düşük düzeltilmiş debide daralan pay. Üs, değişken stator kanatları ve tahliye valfinin
+    // düşük hızda sağladığı ek payı içerecek şekilde seçilmiştir.
+    d.wcHpcDes = W25 * Math.sqrt(lpc.T / 288.15) / (Pt25 / 101325);
+    d.prSurgeDes = s.HPR * (1 + s.smDes);
     return d;
   }
+
+  function surgePR(d, wc) { return 1 + (d.prSurgeDes - 1) * Math.pow(Math.max(wc, 1e-6) / d.wcHpcDes, d.spec.smExp); }
 
   // ---------------------------------------------------------------- Akış çözümü
   // Verilen makara hızları (tasarıma göre bağıl) ve T4 ya da yakıt debisi için tüm istasyonlar.
@@ -351,6 +359,7 @@
       wcHpc: W25 * Math.sqrt(c25.T / 288.15) / (Pt25 / 101325),
       wcFan: W2 * Math.sqrt(Tt2 / 288.15) / (Pt2 / 101325),
       wfP3: c.Wf / Pt3,
+      smHpc: surgePR(d, W25 * Math.sqrt(c25.T / 288.15) / (Pt25 / 101325)) / (Pt3 / Pt25) - 1,
       amb: amb,
       etaTh: (keJet - 0.5 * W2 * V0 * V0) / (c.Wf * LHV),
       etaProp: Fn * V0 / Math.max(keJet - 0.5 * W2 * V0 * V0, 1e-9),
@@ -416,13 +425,18 @@
   }
 
   // ---------------------------------------------------------------- Geçici rejim
-  // Durum: makara hızları + yakıt debisi. Kontrol: N1 talebine integral denetim,
+  // Durum: makara hızları + yakıt debisi. Kontrol: N1 talebine PI denetim,
   // Wf/P3 hızlanma-yavaşlama çizelgeleri, T4 ve N2 üst sınırları.
+  // Rölanti altı (çalıştırma, durdurma, rüzgâr değirmeni) için ayrı bir yarı-ampirik model kullanılır;
+  // çünkü harita tabanlı olmayan çevrim çözücüsü rölanti altında geçerli değildir.
   function Sim(d, fc, start) {
-    this.d = d; this.fc = fc;
-    this.NL = start.NL; this.NH = start.NH; this.Wf = start.Wf;
-    this.t = 0; this.out = start; this.limiter = ''; this.integ = start.Wf;
+    this.d = d; this.fc = fc; this.t = 0; this.limiter = '';
+    this.master = true;            // motor ana şalteri (yakıt + ateşleme)
+    this.protect = true;           // hızlanma çizelgesi ve T4 sınırlayıcısı etkin
+    this.surgeT = 0; this.surgeCount = 0; this.surgeNow = false;
     this.setFlight(fc);
+    if (start) { this.mode = 'run'; this.NL = start.NL; this.NH = start.NH; this.Wf = start.Wf; this.integ = start.Wf; this.out = start; this.egt = start.st[7].T; }
+    else { this.mode = 'sub'; this.master = false; this.NL = 0; this.NH = 0; this.Wf = 0; this.integ = 0; this.lit = false; this.litT = 0; this.egt = this.rt.idle.st[1].T; this.out = this.subOut(); }
   }
   Sim.prototype.setFlight = function (fc) {
     this.fc = fc;
@@ -435,7 +449,66 @@
     var a = this.rt.idle.NL, b = this.rt.max.NL;
     return a + (b - a) * Math.max(0, Math.min(1, pla));
   };
+  Sim.prototype.phase = function () {
+    if (this.mode === 'run') return this.surgeT > 0 ? 'POMPAJ' : 'ÇALIŞIYOR';
+    if (this.master) return this.lit ? 'ÇALIŞTIRMA · ateşleme' : (this.NH < 0.2 ? 'ÇALIŞTIRMA · marş' : 'ÇALIŞTIRMA · yakıt');
+    return this.NH > 0.02 || this.NL > 0.02 ? (this.fc.mach > 0.1 && this.NH < 0.25 ? 'RÜZGÂR DEĞİRMENİ' : 'DURUYOR · yavaşlama') : 'KAPALI';
+  };
+  // Rölanti altı çıktılar: rölanti noktasından hız oranına göre ölçeklenir
+  Sim.prototype.subOut = function () {
+    var id = this.rt.idle, r = this.NH / id.NH, rl = this.NL / id.NL, o = {}, k;
+    for (k in id) o[k] = id[k];
+    var T2 = id.st[1].T, P2 = id.st[1].P, hotK = (this.egt - T2) / (id.st[7].T - T2);
+    var pk = Math.pow(Math.max(r, 0), 2.5), tk = r * r;
+    o.st = id.st.map(function (x, i) {
+      var hot = i >= 5 && i <= 9, cold = i === 3 || i === 4;
+      return { id: x.id, ad: x.ad, f: hot ? x.f : 0,
+        T: i < 2 ? x.T : T2 + (x.T - T2) * (hot ? hotK : (i === 2 || i === 10 ? rl * rl : tk)),
+        P: i < 1 ? x.P : P2 + (x.P - P2) * (i === 2 || i === 10 ? rl * rl : pk),
+        W: x.W * (cold || hot ? Math.max(r, 0) : Math.max(rl, 0)) };
+    });
+    o.NL = this.NL; o.NH = this.NH; o.Wf = this.Wf; o.T4 = o.st[5].T;
+    o.W2 = id.W2 * Math.max(rl, 0); o.W25 = id.W25 * Math.max(r, 0); o.W18 = o.W2 - o.W25;
+    o.BPR = o.W25 > 1e-6 ? o.W18 / o.W25 : id.BPR;
+    o.OPR = o.st[4].P / P2; o.HPR = o.st[4].P / o.st[3].P; o.FPR = o.st[2].P / P2;
+    o.wcHpc = id.wcHpc * Math.pow(Math.max(r, 1e-3), 1.2);
+    o.smHpc = surgePR(this.d, o.wcHpc) / o.HPR - 1;
+    o.Fn = this.lit ? id.Fn * rl * rl : 0.6 * id.Fn * rl * rl - 0.12 * o.W2 * id.V0;   // sönükken: soğuk fan itkisi − rüzgâr değirmeni sürüklemesi
+    o.tsfc = o.Fn > 1 ? o.Wf / o.Fn : NaN;
+    o.V8 = id.V8 * Math.max(r, 0); o.V18 = id.V18 * Math.max(rl, 0);
+    o.sub = true;
+    return o;
+  };
+  Sim.prototype.stepSub = function (dt) {
+    var id = this.rt.idle, m = this.fc.mach;
+    var nhW = 0.17 * Math.min(1, m / 0.8), nlW = 0.36 * Math.min(1, m / 0.8);   // rüzgâr değirmeni hızları
+    var dn = -(0.035 + 0.25 * this.NH) * (this.NH - nhW);                       // aerodinamik + yatak sürüklemesi
+    var starter = this.master && this.NH < 0.5;
+    if (starter) dn += 0.045 * (1 - this.NH / 0.6);                             // hava türbinli marş motoru
+    if (this.master && !this.lit && this.NH >= 0.2) { this.litT += dt; if (this.litT > 1.5) this.lit = true; }
+    if (!this.master) { this.lit = false; this.litT = 0; }
+    if (this.lit) dn = Math.max(dn, 0) + 0.012 + 0.03 * (this.NH - 0.2) / 0.5;  // yanma kaynaklı hızlanma
+    this.NH = Math.max(0, this.NH + dn * dt);
+    var nlT = Math.max(id.NL * Math.pow(this.NH / id.NH, 2.2), nlW), tau = this.lit ? 2.5 : 7;
+    this.NL += (nlT - this.NL) * dt / tau;
+    var r = this.NH / id.NH, T2 = id.st[1].T;
+    this.Wf = this.lit ? id.Wf * (0.45 + 0.55 * Math.pow(r, 1.5)) : 0;
+    // EGT: ateşlemede zirve yapar (zengin karışım, düşük hava debisi), rölantide yerine oturur
+    var bump = Math.max(0, Math.sin(Math.PI * Math.min(1, Math.max(0, (r - 0.28) / 0.72))));
+    var tgt = this.lit ? id.st[7].T + 240 * bump : T2 + (id.st[3].T - T2) * r * r;
+    this.egt += (tgt - this.egt) * dt / (this.lit ? (tgt > this.egt ? 1.6 : 9) : 3);
+    this.limiter = starter ? 'Marş motoru devrede' : '';
+    if (this.lit && this.NH >= id.NH) {                                         // rölantiye ulaşıldı: çevrim modeline devret
+      this.mode = 'run'; this.NH = id.NH; this.NL = id.NL; this.Wf = id.Wf; this.integ = id.Wf; this.out = id; this.egt = id.st[7].T;
+      return this.out;
+    }
+    this.out = this.subOut();
+    return this.out;
+  };
   Sim.prototype.step = function (dt, pla) {
+    this.t += dt; this.surgeNow = false;
+    if (this.mode !== 'run') return this.stepSub(dt);
+    if (!this.master) { this.mode = 'sub'; this.lit = false; this.litT = 0; this.egt = this.out.st[7].T; return this.stepSub(dt); }
     var d = this.d, s = d.spec, o = this.out;
     var dem = this.n1Demand(pla), err = dem - this.NL;
     var wfRef = this.rt.max.Wf;
@@ -445,10 +518,27 @@
     var wf = this.integ + KP * err * wfRef;
     this.limiter = '';
     var hi = this.ruMax * o.st[4].P, lo = this.ruMin * o.st[4].P;
-    if (wf > hi) { wf = hi; this.limiter = 'Hızlanma çizelgesi (Wf/P3)'; }
-    if (o.T4 > s.T4max + 12 && wf > this.Wf) { wf = this.Wf - 0.5 * wfRef * dt; this.limiter = 'T4 sınırı'; }
+    if (this.protect) {
+      if (wf > hi) { wf = hi; this.limiter = 'Hızlanma çizelgesi (Wf/P3)'; }
+      // pompaj payı koruması: bu adımda payı smMin altına düşürmeyecek en yüksek yakıt debisi
+      var selfP = this, nl = this.NL, nh = this.NH;
+      var smAt = function (w) { return flow(d, nl, nh, selfP.fc, { Wf: w }).smHpc; };
+      if (wf > this.Wf && smAt(wf) < s.smMin) {
+        var a = Math.min(this.Wf, wf), b = wf, i;
+        if (smAt(a) < s.smMin) wf = a;
+        else { for (i = 0; i < 7; i++) { var m = 0.5 * (a + b); if (smAt(m) < s.smMin) b = m; else a = m; } wf = a; }
+        this.limiter = 'Hızlanma çizelgesi (pompaj payı)';
+      }
+      if (o.T4 > s.T4max + 12 && wf > this.Wf) { wf = this.Wf - 0.5 * wfRef * dt; this.limiter = 'T4 sınırı'; }
+    } else {
+      wf = Math.min(wf, this.Wf + 1.5 * wfRef * dt, 1.5 * wfRef);              // ölçme valfi hızı ve pompa kapasitesi
+    }
     if (this.NH > s.n2Max + 0.004 && wf > this.Wf) { wf = this.Wf - 0.5 * wfRef * dt; this.limiter = 'N2 sınırı'; }
     if (wf < lo) { wf = lo; this.limiter = 'Yavaşlama çizelgesi (Wf/P3)'; }
+    // pompaj: çalışma noktası pompaj hattını geçerse akış çöker; denetim yakıtı kısarak toparlar
+    var rec = this.rt.idle.wfP3 * o.st[4].P;
+    if (this.surgeT > 0) { this.surgeT -= dt; wf = rec; this.limiter = 'POMPAJ · toparlanma'; }
+    else if (o.smHpc < 0) { this.surgeT = 0.6; this.surgeCount++; this.surgeNow = true; wf = rec; this.limiter = 'POMPAJ · toparlanma'; }
     if (this.limiter) this.integ = wf - KP * err * wfRef;
     this.Wf = wf;
     // makara dinamiği: I·ω·dω/dt = ΔP (Heun / RK2)
@@ -462,7 +552,8 @@
     this.NL = Math.max(0.1, this.NL + 0.5 * dt * (k1[0] + k2[0]));
     this.NH = Math.max(0.1, this.NH + 0.5 * dt * (k1[1] + k2[1]));
     this.out = flow(d, this.NL, this.NH, this.fc, { Wf: this.Wf });
-    this.t += dt;
+    this.egt = this.out.st[7].T;
+    if (this.NH < 0.5 || !isFinite(this.out.Fn)) { this.mode = 'sub'; this.lit = false; this.litT = 0; this.limiter = 'Alev sönmesi'; }
     return this.out;
   };
 
@@ -470,6 +561,6 @@
     SPEC: SPEC, R: R, LHV: LHV,
     cp: cp, h: h, phi: phi, gamma: gamma, entropy: entropy, TfromH: TfromH,
     isa: isa, nozzle: nozzle, burnerFAR: burnerFAR,
-    design: design, flow: flow, steadyT4: steadyT4, steadyTarget: steadyTarget, ratings: ratings, Sim: Sim
+    surgePR: surgePR, design: design, flow: flow, steadyT4: steadyT4, steadyTarget: steadyTarget, ratings: ratings, Sim: Sim
   };
 });

@@ -76,8 +76,12 @@ Kademe sayıları kademe yükleme sınırlarından bulunur (ψ = Δh/U²): HPC 0
 ## 5. Geçici rejim
 
 Yer rölantisinden tam gaza ani gaz kolu hareketi (deniz seviyesi, durağan):
-%95 kalkış itkisine ulaşma süresi **6.5 s**, en yüksek geçici T4 **1876 K**.
-Yakıt denetimi: N1 hatasına PI denetleyici, Wf/P3 hızlanma ve yavaşlama çizelgeleri, T4 ve N2 üst sınırlayıcıları.
+%95 kalkış itkisine ulaşma süresi **7.8 s**, en yüksek geçici T4 **1875 K**.
+Yakıt denetimi: N1 hatasına PI denetleyici, pompaj payını en az %5 tutan hızlanma çizelgesi, Wf/P3 yavaşlama çizelgesi, T4 ve N2 üst sınırlayıcıları.
+
+HPC pompaj hattı jenerik bir eğridir (tasarım noktasında %25 pay). Korumalar kapatılırsa ani gaz hareketi pompaja yol açar; denetim yakıtı kısarak toparlar.
+
+Çalıştırma ve durdurma rölanti altı yarı ampirik modelle benzetilir: marş motoru N2'yi yaklaşık %20'ye çıkarır, ateşleme sonrası EGT zirve yapar, motor rölantiye oturur; durdurmada makaralar sürüklemeyle yavaşlar, uçuşta rüzgâr değirmeni hızında kalır.
 
 ## 6. Yöntem
 
@@ -89,7 +93,7 @@ Yakıt denetimi: N1 hatasına PI denetleyici, Wf/P3 hızlanma ve yavaşlama çiz
 
 ## 7. Sınırlar
 
-- Kompresör/türbin haritası yoktur; pompaj payı, döner durma ve düşük hızdaki gerçek davranış hesaplanmaz. Rölanti civarı sonuçlar yaklaşık değerdir.
+- Ölçülmüş kompresör/türbin haritası yoktur; pompaj hattı jenerik bir eğridir, döner durma ve düşük hızdaki gerçek davranış hesaplanmaz. Rölanti civarı ve rölanti altı sonuçlar yaklaşık değerdir.
 - Kanat profili tasarımı, CFD, yapısal/ısıl/titreşim analizi, malzeme seçimi, ağırlık, gürültü ve emisyon kapsam dışıdır.
 - Verimler, kayıplar, soğutma havası oranları ve ataletler bu sınıf için tipik kabul edilen varsayımlardır; deney verisiyle kalibre edilmemiştir.
 - Karşılaştırma, bu motor sınıfı için yayımlanmış tipik aralıklarla yapılmıştır (fan çapı 1,7–2,1 m, seyir TSFC 0,50–0,60 lb/lbf·sa); belirli bir motorun verisiyle birebir doğrulama değildir.
